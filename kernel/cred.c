@@ -239,7 +239,7 @@ void __put_cred(struct cred *cred)
 #endif
 #ifdef CONFIG_RKP_KDP
 	if(cred == current->cred)
-		printk("[KDP] cred->security: %p\n", cred->security);		
+		printk("[KDP] cred->security: %p\n", cred->security);
 #endif
 	BUG_ON(cred == current->cred);
 	BUG_ON(cred == current->real_cred);
@@ -250,7 +250,7 @@ void __put_cred(struct cred *cred)
         	    put_ro_cred_rcu(&(get_rocred_rcu(cred)->rcu));
 	        else
         	    call_rcu(&(get_rocred_rcu(cred)->rcu), put_ro_cred_rcu);
-	} 
+	}
 	else {
 #endif
 	if (cred->non_rcu)
@@ -319,7 +319,7 @@ const struct cred *get_task_cred(struct task_struct *task)
 	do {
 		cred = __task_cred((task));
 		BUG_ON(!cred);
-	} while (!atomic_inc_not_zero(&((struct cred *)cred)->usage));
+	} while (!get_cred_rcu(cred));
 #endif
 
 	rcu_read_unlock();
@@ -383,15 +383,15 @@ static struct cred *prepare_ro_creds(struct cred *old, int kdp_cmd, u64 p)
 	rkp_cred_fill_params(old,new_ro,use_cnt_ptr,tsec,kdp_cmd,p);
 	uh_call(UH_APP_RKP, RKP_KDP_X46, (u64)&cred_param, 0, 0, 0);
 	if (kdp_cmd == RKP_CMD_COPY_CREDS) {
-		if ((new_ro->bp_task != (void *)p) 
-			|| new_ro->security != tsec 
+		if ((new_ro->bp_task != (void *)p)
+			|| new_ro->security != tsec
 			|| new_ro->use_cnt != use_cnt_ptr) {
 			panic("[%d]: RKP Call failed task=#%p:%p#, sec=#%p:%p#, usecnt=#%p:%p#", kdp_cmd, new_ro->bp_task,(void *)p,new_ro->security,tsec,new_ro->use_cnt,use_cnt_ptr);
 		}
 	}
 	else {
 		if ((new_ro->bp_task != current)||
-			(current->mm 
+			(current->mm
 			&& new_ro->bp_pgd != (void *)pgd) ||
 			(new_ro->security != tsec) ||
 			(new_ro->use_cnt != use_cnt_ptr)) {
