@@ -537,7 +537,7 @@ static struct mount *susfs_reuse_sus_vfsmnt(const char *name, int orig_mnt_id)
 #endif
 #ifdef CONFIG_RKP_NS_PROT
 		rkp_set_data(mnt->mnt, NULL);
-#else
+#endif
 		mnt->mnt.data = NULL;
 		// Makes ida_free() easier to determine whether it should free the mnt_id or not
 		mnt->mnt.susfs_mnt_id_backup = DEFAULT_KSU_MNT_ID;
