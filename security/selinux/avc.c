@@ -184,36 +184,53 @@ static void avc_dump_av(struct audit_buffer *ab, u16 tclass, u32 av)
  * @tsid: target security identifier
  * @tclass: target security class
  */
-static void avc_dump_query(struct audit_buffer *ab, struct selinux_state *state,
+ static void avc_dump_query(struct audit_buffer *ab, struct selinux_state *state,
 			   u32 ssid, u32 tsid, u16 tclass)
-{
+ {
 	int rc;
 	char *scontext;
 	u32 scontext_len;
 
-	rc = security_sid_to_context(ssid, &scontext, &scontext_len);
-#ifdef CONFIG_KSU_SUSFS
+	/* Convert source SID */
+	rc = security_sid_to_context(state, ssid, &scontext, &scontext_len);
+
+ #ifdef CONFIG_KSU_SUSFS
 	if (unlikely(tsid == susfs_ksu_sid && susfs_is_avc_log_spoofing_enabled)) {
 		if (rc)
-			audit_log_format(ab, " tsid=%d", susfs_kernel_sid);
+			audit_log_format(ab, " ssid=%d", ssid);
 		else
-			audit_log_format(ab, " tcontext=%s", "u:r:kernel:s0");
+			audit_log_format(ab, " scontext=%s", scontext);
+		kfree(scontext);
+
+		/* Spoofed target context */
+		audit_log_format(ab, " tcontext=%s", "u:r:kernel:s0");
 		goto bypass_orig_flow;
 	}
-#endif
+ #endif
+
 	if (rc)
-		audit_log_format(ab, "ssid=%d", ssid);
+		audit_log_format(ab, " ssid=%d", ssid);
 	else {
-		audit_log_format(ab, "scontext=%s", scontext);
+		audit_log_format(ab, " scontext=%s", scontext);
 		kfree(scontext);
 	}
 
-#ifdef CONFIG_KSU_SUSFS
-bypass_orig_flow:
-#endif
+	/* Convert target SID */
+	rc = security_sid_to_context(state, tsid, &scontext, &scontext_len);
+	if (rc)
+		audit_log_format(ab, " tsid=%d", tsid);
+	else {
+		audit_log_format(ab, " tcontext=%s", scontext);
+		kfree(scontext);
+	}
+
+ #ifdef CONFIG_KSU_SUSFS
+ bypass_orig_flow:
+ #endif
+
 	BUG_ON(!tclass || tclass >= ARRAY_SIZE(secclass_map));
-	audit_log_format(ab, " tclass=%s", secclass_map[tclass-1].name);
-}
+	audit_log_format(ab, " tclass=%s", secclass_map[tclass - 1].name);
+ }
 
 /**
  * avc_init - Initialize the AVC.
